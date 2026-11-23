@@ -207,10 +207,22 @@ int main(int argc, char **argv) {
     if (cfg.load_path != NULL) {
         printf("Loading model from '%s'...\n", cfg.load_path);
         net = network_load(cfg.load_path);
+
+        int model_inputs = net.layers[0].num_neurons;
+        int model_classes = net.layers[net.num_layers - 1].num_neurons;
+        if (model_inputs != cfg.dim || model_classes != cfg.classes) {
+            fprintf(stderr, "error: model expects %d inputs / %d classes, but --dim is %d and --classes is %d\n",
+                    model_inputs, model_classes, cfg.dim, cfg.classes);
+            exit(EXIT_FAILURE);
+        }
     } else {
         printf("Loading training data from '%s'...\n", cfg.train_path);
         Dataset train = dataset_load_csv(cfg.train_path, cfg.train_n, cfg.dim);
         train_n = train.n;
+        if (train.n == 0) {
+            fprintf(stderr, "error: no training samples could be read from '%s'\n", cfg.train_path);
+            exit(EXIT_FAILURE);
+        }
         printf("  %d samples\n", train.n);
 
         int sizes[MAX_HIDDEN + 2];

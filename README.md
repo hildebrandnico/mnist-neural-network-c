@@ -6,7 +6,7 @@ backpropagation and stochastic gradient descent to recognise handwritten digits 
 Python toolchain for systematic hyperparameter experiments and their analysis.
 
 **Result:** a `784 → 64 → 64 → 10` network reaches **97.3 % accuracy on the full 10,000-image MNIST
-test set** after 30 epochs (macro F1 97.25 %). In longer experiments it reached **98.4 % macro F1**.
+test set** after 30 epochs (macro F1 97.25 %). In a longer experiment (500 epochs, evaluated on 3,000 test images) it reached **98.4 % macro F1**.
 
 <p align="center">
   <img src="docs/images/lr_vs_epochs.png" alt="Learning rate vs. epochs" width="100%">
@@ -18,8 +18,8 @@ test set** after 30 epochs (macro F1 97.25 %). In longer experiments it reached 
   weight initialisation, model serialisation, CSV parsing, and the evaluation metrics (confusion matrix,
   per-class precision / recall / F1, macro averages).
 - **Configurable architecture:** any number and size of hidden layers via `--hidden 128,64,32`.
-- **Reproducible:** seeded weight initialisation, a script that downloads MNIST, and every
-  experiment logged as CSV.
+- **Reproducible:** seeded weight initialisation, a script that downloads MNIST, every
+  experiment logged as CSV, and one command per experiment to re-run it and regenerate its figure.
 - **Empirical study:** about 200 training runs exploring learning rate, training length, dataset size, and
   network width. Key sweeps were repeated over 3 random seeds.
 - **Memory-safe:** the code compiles warning-free with `-Wall -Wextra -Wpedantic` and runs cleanly
@@ -30,7 +30,7 @@ test set** after 30 epochs (macro F1 97.25 %). In longer experiments it reached 
 Requirements: a C11 compiler (clang or gcc), `make`, and Python 3 (for the data download and plots).
 
 ```bash
-git clone https://github.com/<your-username>/mnist-neural-network-c.git
+git clone https://github.com/hildebrandnico/mnist-neural-network-c.git
 cd mnist-neural-network-c
 
 make data      # downloads MNIST (~130 MB as CSV) into ./data
@@ -108,7 +108,7 @@ src/
   metrics.c/h   confusion matrix, precision / recall / F1, formatted report
 scripts/
   download_mnist.py   fetches MNIST and converts it to CSV (standard library only)
-  run_experiments.py  grid search over hyperparameters using the compiled binary
+  run_experiments.py  re-runs the hyperparameter sweeps below (one preset per experiment)
   plot_results.py     generates the figures below from results/*.csv
 results/        raw CSV data of all experiments shown in this README
 docs/images/    generated figures
@@ -118,7 +118,14 @@ docs/images/    generated figures
 
 Unless stated otherwise, the experiments use a `784-64-64-10` network evaluated on 3,000 MNIST test
 images. All raw data is in [`results/`](results/), and `python3 scripts/plot_results.py` regenerates
-every figure.
+every figure. To re-run an experiment from scratch:
+
+```bash
+pip install -r requirements.txt
+python3 scripts/run_experiments.py --list         # lr_epochs, train_size, hidden_layer_sizes, default_loss
+python3 scripts/run_experiments.py train_size     # writes results/train_size.csv (takes roughly 1–2 hours)
+python3 scripts/plot_results.py
+```
 
 ### 1. Learning rate vs. number of epochs
 

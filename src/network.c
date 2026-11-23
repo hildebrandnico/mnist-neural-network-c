@@ -242,6 +242,7 @@ int network_save(const Network *net, const char *path) {
 }
 
 #define MAX_LAYERS 64
+#define MAX_LAYER_SIZE 100000
 
 Network network_load(const char *path) {
     FILE *f = fopen(path, "r");
@@ -250,8 +251,8 @@ Network network_load(const char *path) {
         exit(EXIT_FAILURE);
     }
 
-    /* A row holds up to ~1000 weights of ~20 characters each. */
-    size_t line_cap = 1 << 20;
+    /* The header line is short; the buffer is resized for the weight rows below. */
+    size_t line_cap = 4096;
     char *line = xmalloc(line_cap);
 
     if (fgets(line, (int)line_cap, f) == NULL || strncmp(line, "ARCH", 4) != 0) {
@@ -262,13 +263,37 @@ Network network_load(const char *path) {
     int sizes[MAX_LAYERS];
     int num_layers = 0;
     strtok(line, ",");  /* skip "ARCH" */
-    for (char *tok = strtok(NULL, ","); tok != NULL && num_layers < MAX_LAYERS; tok = strtok(NULL, ",")) {
-        sizes[num_layers++] = atoi(tok);
+    for (char *tok = strtok(NULL, ","); tok != NULL; tok = strtok(NULL, ",")) {
+        int size = atoi(tok);
+        if (num_layers >= MAX_LAYERS || size <= 0 || size > MAX_LAYER_SIZE) {
+            fprintf(stderr, "error: invalid architecture in model file '%s'\n", path);
+            exit(EXIT_FAILURE);
+        }
+        sizes[num_layers++] = size;
+    }
+    if (num_layers < 2) {
+        fprintf(stderr, "error: model file '%s' needs at least an input and an output layer\n", path);
+        exit(EXIT_FAILURE);
     }
 
     Network net = network_create(num_layers, sizes);
 
+    /* One row: layer, index, bias and one weight per input, each printed with
+     * "%.15f" (well below 64 characters unless a weight is astronomically large). */
+    int max_inputs = 0;
+    for (int i = 0; i < num_layers - 1; i++) {
+        if (sizes[i] > max_inputs) max_inputs = sizes[i];
+    }
+    free(line);
+    line_cap = ((size_t)max_inputs + 3) * 64;
+    line = xmalloc(line_cap);
+
     while (fgets(line, (int)line_cap, f) != NULL) {
+        if (strchr(line, '\n') == NULL && !feof(f)) {
+            fprintf(stderr, "error: line too long in model file '%s'\n", path);
+            exit(EXIT_FAILURE);
+        }
+        if (line[0] == '\n' || line[0] == '\r') continue;  /* skip blank lines */
         char *tok = strtok(line, ",");
         if (tok == NULL) continue;
         int l = atoi(tok);

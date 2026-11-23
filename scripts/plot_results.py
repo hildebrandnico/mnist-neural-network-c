@@ -2,7 +2,12 @@
 """Create the figures in docs/images from the CSV files in results/.
 
 Usage:  python3 scripts/plot_results.py
-Requires: pandas, matplotlib  (pip install -r requirements.txt)
+Requires: pandas, matplotlib, numpy  (pip install -r requirements.txt)
+
+For every experiment, results/<name>.csv (written by run_experiments.py) is
+used if it exists; otherwise the per-seed files results/<name>_seed*.csv.
+Both the current output format of mnist-nn (column `hidden_layers`, e.g.
+"64-64") and the older format (columns `hidden1`, `hidden2`) are accepted.
 """
 from pathlib import Path
 
@@ -24,13 +29,32 @@ plt.rcParams.update({
 })
 
 
-def load_seeds(prefix: str) -> pd.DataFrame:
-    """Concatenate the runs of all seeds for one experiment."""
+def normalize(df: pd.DataFrame) -> pd.DataFrame:
+    """Bring both CSV formats to the columns used below (hidden1, hidden2, ...)."""
+    if "hidden_layers" in df.columns:
+        layers = df["hidden_layers"].astype(str).str.split("-", expand=True).astype(int)
+        df["hidden1"] = layers[0]
+        df["hidden2"] = layers[1] if layers.shape[1] > 1 else 0
+    return df
+
+
+def load_experiment(name: str) -> pd.DataFrame:
+    """All runs of one experiment, with a `seed` column."""
+    combined = RESULTS / f"{name}.csv"
+    if combined.exists():
+        df = normalize(pd.read_csv(combined))
+        if "seed" not in df.columns:
+            df["seed"] = 1
+        return df
+
     frames = []
-    for i, path in enumerate(sorted(RESULTS.glob(f"{prefix}_seed*.csv")), start=1):
-        df = pd.read_csv(path)
+    for i, path in enumerate(sorted(RESULTS.glob(f"{name}_seed*.csv")), start=1):
+        df = normalize(pd.read_csv(path))
         df["seed"] = i
         frames.append(df)
+    if not frames:
+        raise SystemExit(f"error: no results for '{name}' in {RESULTS} "
+                         f"(run `python3 scripts/run_experiments.py {name}`)")
     return pd.concat(frames, ignore_index=True)
 
 
@@ -50,7 +74,7 @@ def annotated_heatmap(ax, table: pd.DataFrame, fmt: str, cmap: str, vmin=None, v
 
 
 def plot_lr_epochs():
-    df = load_seeds("lr_epochs")
+    df = load_experiment("lr_epochs")
     mean = df.groupby(["learning_rate", "epochs"])["macro_f1"].mean().reset_index()
     table = mean.pivot(index="learning_rate", columns="epochs", values="macro_f1")
     table = table.sort_index(ascending=False)
@@ -80,7 +104,7 @@ def plot_lr_epochs():
 
 
 def plot_train_size():
-    df = load_seeds("train_size")
+    df = load_experiment("train_size")
     stats = df.groupby("train_samples").agg(
         f1_mean=("macro_f1", "mean"), f1_std=("macro_f1", "std"),
         time_mean=("sec_per_epoch", "mean")).reset_index()
@@ -119,7 +143,8 @@ def plot_train_size():
 
 
 def plot_hidden_layers():
-    df = pd.read_csv(RESULTS / "hidden_layer_sizes.csv")
+    df = load_experiment("hidden_layer_sizes")
+    df = df.groupby(["hidden1", "hidden2"], as_index=False)[["macro_f1", "sec_per_epoch"]].mean()
     f1 = df.pivot(index="hidden1", columns="hidden2", values="macro_f1")
     time = df.pivot(index="hidden1", columns="hidden2", values="sec_per_epoch")
 
