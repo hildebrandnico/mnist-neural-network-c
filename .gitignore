@@ -1,0 +1,18 @@
+# Build artifacts
+build/
+mnist-nn
+*.o
+*.exe
+*.dSYM/
+
+# Dataset (downloaded with `make data`) and run outputs
+data/
+output/
+
+# Editor / OS / tooling
+.vscode/
+.idea/
+.DS_Store
+__pycache__/
+.mypy_cache/
+.venv/
