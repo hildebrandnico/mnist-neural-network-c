@@ -167,7 +167,7 @@ remaining errors come mostly from visually similar pairs (5→3, 2→8, 9→8, 7
 
 ## Limitations and next steps
 
-This was my first larger C project, so it deliberately puts clarity first, not speed. Things I would
+This was our first larger C project, so it deliberately puts clarity first, not speed. Things we would
 improve next:
 
 - **Proper validation split.** The test set is currently used to monitor the loss and compare
@@ -182,8 +182,8 @@ improve next:
 
 ## Background
 
-I built this project during my first semester at university as part of a course on the
-foundations of artificial intelligence. The goal was to understand neural networks from first principles,
+This project was built by **Nicolas Hildebrand** and **Korbinian Hirsch** during our first semester
+at university as part of a course on the foundations of artificial intelligence. The goal was to understand neural networks from first principles,
 without relying on frameworks such as PyTorch or TensorFlow.
 
 ## License
